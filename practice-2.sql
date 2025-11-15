@@ -220,3 +220,138 @@ FROM
     UnitsSold u ON p.product_id = u.product_id
         AND u.purchase_date BETWEEN p.start_date AND p.end_date
 GROUP BY p.product_id;
+
+
+CREATE TABLE Activity (
+    player_id INT,
+    device_id INT,
+    event_date DATE,
+    games_played INT
+);
+
+INSERT INTO Activity (player_id, device_id, event_date, games_played)
+VALUES
+(1, 2, '2016-03-01', 5),
+(1, 2, '2016-05-02', 6),
+(2, 3, '2017-06-25', 1),
+(3, 1, '2016-03-02', 0),
+(3, 4, '2018-07-03', 5);
+
+#Q 18 Write an SQL query to print first login date and login device 
+SELECT player_id, device_id AS first_login_device , event_date as first_login_date
+FROM (
+    SELECT 
+        player_id,
+        device_id,
+        event_date,
+        ROW_NUMBER() OVER (
+            PARTITION BY player_id 
+            ORDER BY event_date ASC
+        ) AS rn
+    FROM Activity
+) t
+WHERE rn = 1;
+
+
+CREATE TABLE Products (
+    product_id INT PRIMARY KEY,
+    product_name VARCHAR(255),
+    product_category VARCHAR(255)
+);
+
+CREATE TABLE Orders (
+    product_id INT,
+    order_date DATE,
+    unit INT,
+    FOREIGN KEY (product_id) REFERENCES Products(product_id)
+);
+
+INSERT INTO Products (product_id, product_name, product_category) VALUES
+(1, 'Leetcode Solutions', 'Book'),
+(2, 'Jewels of Stringology', 'Book'),
+(3, 'HP', 'Laptop'),
+(4, 'Lenovo', 'Laptop'),
+(5, 'Leetcode Kit', 'T-shirt');
+
+INSERT INTO Orders (product_id, order_date, unit) VALUES
+(1, '2020-02-05', 60),
+(1, '2020-02-10', 70),
+(2, '2020-01-18', 30),
+(2, '2020-02-11', 80),
+(3, '2020-02-17', 2),
+(3, '2020-02-24', 3),
+(4, '2020-03-01', 20),
+(4, '2020-03-04', 30),
+(4, '2020-03-04', 60),
+(5, '2020-02-25', 50),
+(5, '2020-02-27', 50),
+(5, '2020-03-01', 50);
+
+
+# Q 19 Write an SQL query to get the names of products that have at least 100 units ordered in February 2020 and their amount.
+SELECT 
+    p.product_name, SUM(o.unit) AS total
+FROM
+    Products P
+        JOIN
+    Orders o ON p.product_id = o.product_id
+        AND o.order_date BETWEEN '2020-02-01' AND '2020-02-28'
+GROUP BY o.product_id
+HAVING sum(o.unit) >= 100;
+
+CREATE TABLE Customers (
+    customer_id INT PRIMARY KEY,
+    name VARCHAR(255),
+    country VARCHAR(255)
+);
+CREATE TABLE Products (
+    product_id INT PRIMARY KEY,
+    description VARCHAR(255),
+    price INT
+);
+CREATE TABLE Orders (
+    order_id INT PRIMARY KEY,
+    customer_id INT,
+    product_id INT,
+    order_date DATE,
+    quantity INT,
+    FOREIGN KEY (customer_id) REFERENCES Customers(customer_id),
+    FOREIGN KEY (product_id) REFERENCES Products(product_id)
+);
+
+INSERT INTO Customers (customer_id, name, country) VALUES
+(1, 'Winston', 'USA'),
+(2, 'Jonathan', 'Peru'),
+(3, 'Moustafa', 'Egypt');
+
+INSERT INTO Products (product_id, description, price) VALUES
+(10, 'LC Phone', 300),
+(20, 'LC T-Shirt', 10),
+(30, 'LC Book LC', 45),
+(40, 'Keychain', 2);
+
+INSERT INTO Orders (order_id, customer_id, product_id, order_date, quantity) VALUES
+(1, 1, 10, '2020-06-10', 1),
+(2, 1, 20, '2020-06-10', 1),
+(3, 1, 30, '2020-06-10', 2),
+(4, 2, 10, '2020-07-01', 10),
+(5, 2, 40, '2020-07-01', 2),
+(6, 3, 20, '2020-07-01', 2),
+(7, 3, 10, '2020-07-08', 2),
+(8, 3, 30, '2020-07-08', 3);
+
+# Q 20 Write an SQL query to report the customer_id and customer_name of customers who have spent at least $100 in each month of June and July 2020. Return the result table in any order.
+SELECT 
+    c.customer_id,
+    c.name AS customer_name
+FROM Orders o
+INNER JOIN Customers c ON o.customer_id = c.customer_id
+INNER JOIN Products p ON o.product_id = p.product_id
+WHERE o.order_date BETWEEN '2020-06-01' AND '2020-07-31'
+GROUP BY c.customer_id, c.name
+HAVING 
+    SUM(CASE WHEN MONTH(o.order_date) = 6 AND YEAR(o.order_date) = 2020 
+             THEN p.price * o.quantity ELSE 0 END) >= 100
+    AND
+    SUM(CASE WHEN MONTH(o.order_date) = 7 AND YEAR(o.order_date) = 2020 
+             THEN p.price * o.quantity ELSE 0 END) >= 100;
